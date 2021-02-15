@@ -1,0 +1,89 @@
+---
+title: "Age Group Analysis Scratch Pad"
+output: html_notebook
+---
+
+```{r}
+source('Global.R')
+x <- races %>% filter(sport == 'overall', dist == 'SPRINT')
+```
+
+## Notes
+
+1. ANOVA
+1. ANCOVA
+1. Allow user to adjust for event, gender, age/rcat -> then plot the residuals on rcat
+1. Correlate between age and age group
+1. Allow categorizing athenas, clydes, masters and opens into age groups
+1. 
+
+## Simplest Case
+Let's start with a very simple case of two levels of a factor.  Here, that would be two different events
+
+````{r}
+events <- x %>% 
+  group_by(event) %>%
+  summarize(n = n(),
+            m = mean(stime),
+            s = sd(stime)
+  ) %>%
+  filter(n> 250) %>%
+  arrange(desc(n))
+
+head(events)
+```
+
+I'm just going to pick a couple of events that have similar participant numbers and similar SDs.  Then we'll pick two age groups, M3034 and M5559
+
+```{r}
+my.events <- c('WILYMCA20110917SPRINT', 'WILYMCA20090919SPRINT')
+my.cats <- c('M3034', 'M5559')
+final <- x %>%
+  filter(event %in% my.events,
+         rcat %in% my.cats)
+nrow(final)
+tapply(final$stime, final$rcat, mean)
+```
+
+## Most Complex Model - simplest data case
+
+
+```{r}
+x.lm <- lm(stime ~ event*rcat, data=final)
+anova(x.lm)
+summary(x.lm)
+```
+In this case we've looked at the effect of event and age group on race time.  The event had no effect, but the age group did.  Let's start reducing the complex model by removing the insignificant interaction term and rerunning to see if event does become significant.
+
+## Reduction Step 1
+```{r}
+x.lm <- lm(stime ~ event+rcat, data=final)
+anova(x.lm)
+summary(x.lm)
+```
+
+So, in this data set, event has not significant effect on race time.  To be fair, I should note that the two levels of event represent the same venue and distance (350y swim, 9 mile bike, 5k run).  It is also worth noting that this model accounts for barely 10% of the variation in overall race time.
+
+### Reduction Step 2 - Single Factor Model
+
+```{r}
+x.lm <- lm(stime ~ rcat, data=final)
+anova(x.lm)
+summary(x.lm)
+```
+From the anova table above we can see that the M5559 age group was, on average, 531.48 seconds slower than the M3034 age group.  We expected this: older athletes, on average, are expected to be slower than younger athletes.  
+
+## AOV on Event and Race Category
+```{r}
+x.lm <- lm(stime ~ event*rcat, data=x)
+anova(x.lm)
+summary(x.lm)
+```
+
+## ANCOVA on Event and Age
+```{r}
+x.lm <- lm(stime ~ event+ age, data=x)
+anova(x.lm)
+summary(x.lm)
+```
+
